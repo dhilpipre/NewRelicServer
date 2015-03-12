@@ -1,0 +1,94 @@
+#!/bin/bash -e
+
+PATH=/bin:/usr/bin:$PATH
+source $OPENSHIFT_CARTRIDGE_SDK_BASH
+
+NRSERVERHOME=$OPENSHIFT_NRSERVER_DIR
+
+LOGFILE=${NRSERVERHOME}/Plugin.out
+
+# the path to your PID file
+PIDFILE=${NRSERVERHOME}/plugin.pid
+
+SERVERMONITORCMD="$NRSERVERHOME/etc/init.d/newrelic-sysmond "
+
+source $OPENSHIFT_CARTRIDGE_SDK_BASH
+
+function start {
+	getStatus
+	if [ $RUNNING -eq 1 ]; then
+	    client_result "New Relic Server Monitor (pid $PID) already running"
+	else
+		nohup $SERVERMONITORCMD start >> $LOGFILE 2>1 &
+		if [ "x$!" != "x" ] ; then
+		    echo "$!" > $PIDFILE
+		    client_result "New Relic Server Monitor started"
+		else
+		    client_result "New Relic Server Monitor could not be started"
+	    	    ERROR=3
+		fi	
+	fi
+}
+
+function stop {
+	getStatus
+	if [ $RUNNING -eq 0 ]; then
+	    client_result "$0 $ARG: $STATUS"
+	fi
+    $SERVERMONITORCMD stop
+    rm $PIDFILE
+}
+
+function restart {
+	stop
+	
+	start
+}
+
+function getStatus {
+     # check for pidfile
+    if [ -f $PIDFILE ] ; then
+	PID=`cat $PIDFILE`
+	if [ "x$PID" != "x" ] && kill -0 $PID 2>/dev/null ; then
+	    STATUS="New Relic Server Monitor (pid $PID) running"
+	    RUNNING=1
+	else
+	    STATUS="New Relic Server Monitor (pid $PID?) not running"
+	    RUNNING=0
+	fi
+    else
+	STATUS="New Relic Server Monitor (no pid file) not running"
+	RUNNING=0
+    fi
+
+}
+
+function status {
+   getStatus
+   client_result “$STATUS”
+}
+
+function catchall {
+    client_result "not yet implemented"
+}
+
+
+cd ${NRSERVERHOME}
+
+    case $1 in
+    start) start ;;
+    stop) stop ;;
+	restart) restart ;;
+	status) status ;;
+	reload)      catchall ;;
+	tidy)        catchall ;;
+	pre-build)   catchall ;;
+	build)       catchall ;;
+	deploy)      catchall ;;
+	post-deploy) catchall ;;    
+	*) exit 0
+esac
+
+exit $ERROR
+
+

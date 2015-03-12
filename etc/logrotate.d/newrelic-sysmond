@@ -1,0 +1,9 @@
+$OPENSHIFT_NRSERVER_DIR/var/log/newrelic/nrsysmond.log {
+    rotate 7
+    daily
+    missingok
+    notifempty
+    sharedscripts
+    copytruncate
+    compress
+}
